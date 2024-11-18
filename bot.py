@@ -118,7 +118,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Send a message when the command /start is issued."""
     if str(update.effective_user.id) not in user_credentials:
         text = (
-            "👋 Welcome to the BFMR Deal Bot by BuyingGroupPro.com!\n\n"
+            "👋 Welcome to the BFMR Deal Bot by BuyingGroupPro!\n\n"
             "Before we begin, you'll need to set up your BFMR API credentials.\n"
             "Use /setup to configure your API key and secret.\n\n"
             "🔗 Visit [BuyingGroupPro.com](https://buyingrouppro.com) for more tools and resources!"
@@ -126,11 +126,11 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("🌐 Visit BuyingGroupPro.com", url="https://buyingrouppro.com")]]
     else:
         text = (
-            "👋 Welcome to the BFMR Deal Bot by BuyingGroupPro.com!\n\n"
+            "👋 Welcome to the BFMR Deal Bot by BuyingGroupPro!\n\n"
             "🌟 *Features*:\n"
             "• View all active BFMR deals at once (/viewall)\n"
             "• Browse deals one at a time (/deals)\n"
-            "• Filter profitable deals (/profitable)\n"
+            "• Filter at or above retail priced deals (/profitable)\n"
             "• Easy deal commitment\n\n"
             "🔗 Visit [BuyingGroupPro.com](https://buyingrouppro.com) for more tools and resources!"
         )
@@ -200,7 +200,7 @@ async def api_secret_received(update: Update, context: ContextTypes.DEFAULT_TYPE
             "✅ API credentials verified and saved successfully!\n\n"
             "You can now use the following commands:\n"
             "/deals - View all available deals\n"
-            "/profitable - View deals at or above retail\n"
+            "/profitable - View all deals at or above retail\n"
             "/viewall - View all deals at once\n"
             "/search [term] - Search for specific deals\n"
             "/help - Show all available commands"
