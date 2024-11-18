@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "C:\\Users\\Alienware Aurora R6\\AppData\\Local\\Programs\\Python\\Python38-32\\python.exe"
+    "python.pythonPath": "C:\\path\\to\\your\\venv\\Scripts\\python.exe",
+    "terminal.integrated.shellArgs.windows": ["-ExecutionPolicy", "Bypass", "-NoExit", "-Command", "& { C:\\path\\to\\your\\venv\\Scripts\\Activate.ps1 }"]
 }
