@@ -310,7 +310,7 @@ async def send_deal_message(update: Update, deal: dict, is_reply: bool = False, 
             ])
         
         # Add website button
-        keyboard.append([InlineKeyboardButton("🌐 Visit BuyingGroupPro.com", url="https://buyingrouppro.com")])
+        keyboard.append([InlineKeyboardButton("🌐 Visit BuyingGroupPro.com", url="https://buyinggrouppro.com")])
         
         reply_markup = InlineKeyboardMarkup(keyboard)
         
