@@ -291,7 +291,7 @@ async def send_deal_message(update: Update, deal: dict, is_reply: bool = False, 
         )
         
         # Add footer
-        text += "\n🤖 *Powered by [BuyingGroupPro.com](https://buyingrouppro.com)*"
+        text += "\n🤖 *Powered by [BuyingGroupPro.com](https://buyinggrouppro.com)*"
         
         # Create buttons for each item
         keyboard = []
