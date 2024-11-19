@@ -275,87 +275,64 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         logger.error(f"Error in error handler: {e}")
 
-async def send_deal_message(update: Update, deal: dict, is_reply: bool = False):
-    """Helper function to send a deal message with commit button"""
-    deal_id = deal.get('deal_id')
-    deal_code = deal.get('deal_code')
-    logger.info(f"Creating message for deal ID: {deal_id}")
-    
-    retail_price = float(deal.get('retail_price', 0))
-    payout_price = float(deal.get('payout_price', 0))
-    profit = payout_price - retail_price
-    
-    # Calculate percentage difference
-    if retail_price > 0:
-        percentage = ((payout_price - retail_price) / retail_price) * 100
-        percentage_str = f"({'+' if percentage > 0 else ''}{percentage:.1f}%)"
-    else:
-        percentage_str = "(N/A%)"
-    
-    # Main deal info with percentage
-    text = (
-        f"🏷️ *{deal.get('title')}*\n"
-        f"💰 Retail: ${retail_price:.2f}\n"
-        f"💵 Payout: ${payout_price:.2f}\n"
-        f"📈 Profit: ${profit:.2f} {percentage_str}\n"
-        f"🏪 Retailer: {deal.get('retailers')}\n"
-        f"📝 Deal Code: {deal_code}\n\n"
-        f"*Available Items:*\n"
-    )
-    
-    # Add item details
-    for idx, item in enumerate(deal.get('items', []), 1):
-        retailer_links = []
-        for link in item.get('retailer_links', []):
-            retailer_links.append(f"[{link['retailer']}]({link['url']})")
+async def send_deal_message(update: Update, deal: dict, is_reply: bool = False, show_navigation: bool = False):
+    """Send a formatted deal message"""
+    try:
+        # Format deal message
+        deal_id = deal.get('deal_id', '')
+        text = (
+            f"🏷️ *{deal.get('title', '')}*\n\n"
+            f"💰 Retail: ${deal.get('retail_price', 0)}\n"
+            f"💵 Payout: ${deal.get('payout_price', 0)}\n"
+            f"📈 Profit: ${float(deal.get('payout_price', 0)) - float(deal.get('retail_price', 0)):.2f}\n"
+            f"🏪 Retailer: {deal.get('retailers', '')}\n"
+            f"📦 Type: {deal.get('retail_type', '')}\n"
+            f"⏰ Closing: {deal.get('closing_at', '')}\n"
+        )
         
-        text += (
-            f"{idx}. *{item.get('name', '')}*\n"
-            f"   • Color: {item.get('color', 'N/A')}\n"
-            f"   • Model: {item.get('model', 'N/A')}\n"
-            f"   • UPC: {', '.join(item.get('upc', ['N/A']))}\n"
-            f"   • Links: {' | '.join(retailer_links)}\n\n"
-        )
-    
-    # Add footer to text
-    text += "\n🤖 *Powered by [BuyingGroupPro.com](https://buyingrouppro.com)*"
-    
-    # Create buttons for each item
-    keyboard = []
-    for item in deal.get('items', []):
-        name_parts = item.get('name', '').split(' - ')
-        color = item.get('color', '')
-        button_text = f"Commit: {name_parts[0]} - {color}"
-        callback_data = f"select_{deal_id}_{item['id']}"
-        keyboard.append([InlineKeyboardButton(button_text, callback_data=callback_data)])
-    
-    # Add navigation buttons
-    keyboard.append([
-        InlineKeyboardButton("⬅️ Previous", callback_data="prev_deal"),
-        InlineKeyboardButton("Next ➡️", callback_data="next_deal")
-    ])
-    
-    # Add website button to keyboard
-    keyboard.append([InlineKeyboardButton("🌐 Visit BuyingGroupPro.com", url="https://buyingrouppro.com")])
-    
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    if isinstance(update, Update):
-        # If it's a direct command
-        return await update.message.reply_text(
-            text, 
-            parse_mode='Markdown', 
-            reply_markup=reply_markup, 
-            disable_web_page_preview=True
-        )
-    else:
-        # If it's a callback query
-        return await update.edit_text(
-            text, 
-            parse_mode='Markdown', 
-            reply_markup=reply_markup, 
-            disable_web_page_preview=True
-        )
+        # Add footer
+        text += "\n🤖 *Powered by [BuyingGroupPro.com](https://buyingrouppro.com)*"
+        
+        # Create buttons for each item
+        keyboard = []
+        for item in deal.get('items', []):
+            name_parts = item.get('name', '').split(' - ')
+            color = item.get('color', '')
+            button_text = f"Commit: {name_parts[0]} - {color}"
+            callback_data = f"select_{deal_id}_{item['id']}"
+            keyboard.append([InlineKeyboardButton(button_text, callback_data=callback_data)])
+        
+        # Add navigation buttons only if show_navigation is True
+        if show_navigation:
+            keyboard.append([
+                InlineKeyboardButton("⬅️ Previous", callback_data="prev_deal"),
+                InlineKeyboardButton("Next ➡️", callback_data="next_deal")
+            ])
+        
+        # Add website button
+        keyboard.append([InlineKeyboardButton("🌐 Visit BuyingGroupPro.com", url="https://buyingrouppro.com")])
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        if isinstance(update, Update):
+            return await update.message.reply_text(
+                text, 
+                parse_mode='Markdown', 
+                reply_markup=reply_markup, 
+                disable_web_page_preview=True
+            )
+        else:
+            return await update.edit_text(
+                text, 
+                parse_mode='Markdown', 
+                reply_markup=reply_markup, 
+                disable_web_page_preview=True
+            )
+            
+    except Exception as e:
+        logger.error(f"Error sending deal message: {e}")
+        if isinstance(update, Update):
+            await update.message.reply_text("❌ Error displaying deal. Please try again later.")
 
 async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show available deals"""
@@ -379,7 +356,7 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Send first deal
         await message.delete()  # Delete the "Fetching deals..." message
-        await send_deal_message(update, deals[0])
+        await send_deal_message(update, deals[0], show_navigation=True)
         
     except Exception as e:
         logger.error(f"Error fetching deals: {e}")
@@ -471,19 +448,21 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if query.data.startswith('select_'):
             # Handle item selection
             _, deal_id, item_id = query.data.split('_', 2)
-            
-            # Store selection in context
             context.user_data['pending_commit'] = {
                 'deal_id': deal_id,
                 'item_id': item_id
             }
-            
-            # Ask for quantity
             await query.message.reply_text(
                 "How many units would you like to commit to? (Enter a number)",
                 reply_markup=ForceReply(selective=True)
             )
         
+        elif query.data == 'view_profitable':
+            await profitable_command(query, context)
+            
+        elif query.data == 'view_all':
+            await viewall_command(query, context)
+            
         elif query.data in ['prev_deal', 'next_deal']:
             # Handle deal navigation
             deals = context.user_data.get('current_deals', [])
@@ -495,7 +474,7 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 new_index = (current_index - 1) % len(deals)
             
             context.user_data['current_deal_index'] = new_index
-            await send_deal_message(query.message, deals[new_index])  # Pass message instead of update
+            await send_deal_message(query.message, deals[new_index], show_navigation=True)
             
     except Exception as e:
         logger.error(f"Error in button callback: {e}")
