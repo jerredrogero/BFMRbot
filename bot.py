@@ -344,38 +344,23 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         response = bfmr.get_active_deals(page_size=50)
-        
-        if response.status_code != 200:
-            error_msg = "❌ An error occurred while fetching deals."
-            if response.status_code == 500:
-                error_msg = "⚠️ BFMR API is temporarily unavailable. Please try again in a few minutes."
-            elif response.status_code == 401:
-                error_msg = "❌ Invalid API credentials. Please use /setup to reconfigure."
-            elif response.status_code == 403:
-                error_msg = "❌ Access forbidden. Please check your API permissions."
-                
-            logger.error(f"BFMR API error: {response.status_code} - {response.text}")
-            await message.edit_text(error_msg)
-            return
-            
-        data = response.json()
-        deals = data.get('deals', [])
+        deals = response.get('deals', [])
         
         if not deals:
             await message.edit_text("No deals available at the moment.")
             return
-            
+        
         # Store deals in context
         context.user_data['current_deals'] = deals
         context.user_data['current_deal_index'] = 0
         
         # Send first deal
-        await message.delete()
+        await message.delete()  # Delete the "Fetching deals..." message
         await send_deal_message(update, deals[0], show_navigation=True)
         
     except Exception as e:
         logger.error(f"Error fetching deals: {e}")
-        await message.edit_text("❌ An unexpected error occurred. Please try again later.")
+        await message.edit_text("❌ Error fetching deals. Please try again later.")
 
 async def profitable_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show profitable deals only"""
