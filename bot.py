@@ -335,21 +335,23 @@ async def send_deal_message(update: Update, deal: dict, is_reply: bool = False, 
             await update.message.reply_text("❌ Error displaying deal. Please try again later.")
 
 async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Show available deals"""
-    if not await check_credentials(update):
-        return
-        
-    message = await update.message.reply_text("🔍 Fetching deals...")
-    bfmr = get_user_bfmr(str(update.effective_user.id))
-    
     try:
-        response = bfmr.get_active_deals(page_size=50)
-        deals = response.get('deals', [])
+        message = await update.message.reply_text("🔍 Fetching deals...")
+        bfmr = get_user_bfmr(str(update.effective_user.id))
+        
+        response = await bfmr.get_active_deals(page_size=50)
+        if response.status_code == 500:
+            await message.edit_text("❌ BFMR API is currently experiencing issues. Please try again later.")
+            logger.error(f"BFMR API 500 error: {response.text}")
+            return
+            
+        response.raise_for_status()
+        deals = response.json().get('deals', [])
         
         if not deals:
             await message.edit_text("No deals available at the moment.")
             return
-        
+            
         # Store deals in context
         context.user_data['current_deals'] = deals
         context.user_data['current_deal_index'] = 0
@@ -358,9 +360,12 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.delete()  # Delete the "Fetching deals..." message
         await send_deal_message(update, deals[0], show_navigation=True)
         
-    except Exception as e:
+    except requests.exceptions.RequestException as e:
         logger.error(f"Error fetching deals: {e}")
-        await message.edit_text("❌ Error fetching deals. Please try again later.")
+        await message.edit_text("❌ Unable to connect to BFMR API. Please try again later.")
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        await message.edit_text("❌ An unexpected error occurred. Please try again later.")
 
 async def profitable_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Show profitable deals only"""
