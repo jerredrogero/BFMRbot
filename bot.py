@@ -345,14 +345,15 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         response = bfmr.get_active_deals(page_size=50)
         
-        if response.status_code == 500:
-            await message.edit_text("⚠️ BFMR API is temporarily unavailable. Please try again in a few minutes.")
-            logger.error(f"BFMR API 500 error: {response.text}")
+        # Handle non-200 responses
+        if isinstance(response, requests.Response) and response.status_code != 200:
+            if response.status_code == 500:
+                await message.edit_text("⚠️ BFMR API is temporarily unavailable. Please try again in a few minutes.")
+            else:
+                await message.edit_text(f"❌ API Error: {response.status_code}. Please try again later.")
             return
             
-        response.raise_for_status()
-        deals_data = response.json()
-        deals = deals_data.get('deals', [])
+        deals = response.get('deals', [])
         
         if not deals:
             await message.edit_text("No deals available at the moment.")
@@ -366,16 +367,8 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await message.delete()
         await send_deal_message(update, deals[0], show_navigation=True)
         
-    except requests.exceptions.HTTPError as e:
-        logger.error(f"Error fetching deals: {e}")
-        error_message = "Unable to connect to BFMR API."
-        if e.response.status_code == 401:
-            error_message = "Invalid API credentials. Please use /setup to reconfigure."
-        elif e.response.status_code == 403:
-            error_message = "Access forbidden. Please check your API permissions."
-        await message.edit_text(f"❌ {error_message}")
     except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+        logger.error(f"Error fetching deals: {e}")
         await message.edit_text("❌ An unexpected error occurred. Please try again later.")
 
 async def profitable_command(update: Update, context: ContextTypes.DEFAULT_TYPE):

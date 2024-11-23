@@ -27,11 +27,12 @@ class BFMRAPI:
             }
 
             response = requests.get(url, headers=headers, params=params)
-            # Check status code before processing
+            
+            # Return response object for status code handling in bot
             if response.status_code != 200:
+                logger.error(f"BFMR API error: {response.status_code} - {response.text}")
                 return response
             
-            response.raise_for_status()
             deals_data = response.json().get('deals', [])
             
             # Process the deals
