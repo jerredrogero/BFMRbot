@@ -345,15 +345,21 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         response = bfmr.get_active_deals(page_size=50)
         
-        # Handle non-200 responses
-        if isinstance(response, requests.Response) and response.status_code != 200:
+        if response.status_code != 200:
+            error_msg = "❌ An error occurred while fetching deals."
             if response.status_code == 500:
-                await message.edit_text("⚠️ BFMR API is temporarily unavailable. Please try again in a few minutes.")
-            else:
-                await message.edit_text(f"❌ API Error: {response.status_code}. Please try again later.")
+                error_msg = "⚠️ BFMR API is temporarily unavailable. Please try again in a few minutes."
+            elif response.status_code == 401:
+                error_msg = "❌ Invalid API credentials. Please use /setup to reconfigure."
+            elif response.status_code == 403:
+                error_msg = "❌ Access forbidden. Please check your API permissions."
+                
+            logger.error(f"BFMR API error: {response.status_code} - {response.text}")
+            await message.edit_text(error_msg)
             return
             
-        deals = response.get('deals', [])
+        data = response.json()
+        deals = data.get('deals', [])
         
         if not deals:
             await message.edit_text("No deals available at the moment.")
