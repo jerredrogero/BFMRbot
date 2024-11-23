@@ -1,6 +1,5 @@
 import requests
 import logging
-import time
 
 # Configure logging
 logging.basicConfig(
@@ -26,53 +25,37 @@ class BFMRAPI:
             'exclusive_deals_only': '0'
         }
 
-        try:
-            response = requests.get(url, headers=headers, params=params)
-            # Add retry logic
-            retries = 3
-            while response.status_code == 500 and retries > 0:
-                logger.warning(f"Got 500 error, retrying... {retries} attempts left")
-                time.sleep(2)  # Wait 2 seconds before retry
-                response = requests.get(url, headers=headers, params=params)
-                retries -= 1
-
-            response.raise_for_status()
-            deals_data = response.json().get('deals', [])
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        deals_data = response.json().get('deals', [])
+        
+        # Process the deals
+        processed_deals = []
+        for deal in deals_data:
+            retail_price = float(deal.get('retail_price', 0))
+            payout_price = float(deal.get('payout_price', 0))
+            price_difference = payout_price - retail_price
             
-            # Process the deals
-            processed_deals = []
-            for deal in deals_data:
-                retail_price = float(deal.get('retail_price', 0))
-                payout_price = float(deal.get('payout_price', 0))
-                price_difference = payout_price - retail_price
-                
-                # Get first item's URL if available
-                product_url = ''
-                items = deal.get('items', [])
-                if items and items[0].get('retailer_links'):
-                    product_url = items[0]['retailer_links'][0].get('url', '')
+            # Get first item's URL if available
+            product_url = ''
+            items = deal.get('items', [])
+            if items and items[0].get('retailer_links'):
+                product_url = items[0]['retailer_links'][0].get('url', '')
 
-                processed_deal = {
-                    'deal_id': deal.get('deal_id'),
-                    'title': deal.get('title'),
-                    'retail_price': retail_price,
-                    'payout_price': payout_price,
-                    'price_difference': price_difference,
-                    'product_url': product_url,
-                    'items': items,
-                    'retailers': deal.get('retailers'),
-                    'deal_code': deal.get('deal_code')
-                }
-                processed_deals.append(processed_deal)
-            
-            return {'deals': processed_deals}
-
-        except requests.exceptions.HTTPError as e:
-            logger.error(f"HTTP Error: {str(e)}")
-            return {'deals': [], 'error': str(e)}
-        except Exception as e:
-            logger.error(f"Unexpected error: {str(e)}")
-            return {'deals': [], 'error': str(e)}
+            processed_deal = {
+                'deal_id': deal.get('deal_id'),
+                'title': deal.get('title'),
+                'retail_price': retail_price,
+                'payout_price': payout_price,
+                'price_difference': price_difference,
+                'product_url': product_url,
+                'items': items,
+                'retailers': deal.get('retailers'),
+                'deal_code': deal.get('deal_code')
+            }
+            processed_deals.append(processed_deal)
+        
+        return {'deals': processed_deals}
 
     def commit_to_deal(self, deal_id: str, item_id: str, item_qty: str):
         """Commit to a deal using the BFMR API"""
