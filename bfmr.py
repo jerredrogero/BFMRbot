@@ -14,48 +14,57 @@ class BFMRAPI:
         self.api_secret = api_secret
 
     def get_active_deals(self, page_size=10):
-        url = 'https://api.bfmr.com/api/v2/deals'
-        headers = {
-            'API-KEY': self.api_key,
-            'API-SECRET': self.api_secret
-        }
-        params = {
-            'page_size': page_size,
-            'page_no': 1,
-            'exclusive_deals_only': '0'
-        }
-
-        response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
-        deals_data = response.json().get('deals', [])
-        
-        # Process the deals
-        processed_deals = []
-        for deal in deals_data:
-            retail_price = float(deal.get('retail_price', 0))
-            payout_price = float(deal.get('payout_price', 0))
-            price_difference = payout_price - retail_price
-            
-            # Get first item's URL if available
-            product_url = ''
-            items = deal.get('items', [])
-            if items and items[0].get('retailer_links'):
-                product_url = items[0]['retailer_links'][0].get('url', '')
-
-            processed_deal = {
-                'deal_id': deal.get('deal_id'),
-                'title': deal.get('title'),
-                'retail_price': retail_price,
-                'payout_price': payout_price,
-                'price_difference': price_difference,
-                'product_url': product_url,
-                'items': items,
-                'retailers': deal.get('retailers'),
-                'deal_code': deal.get('deal_code')
+        try:
+            url = 'https://api.bfmr.com/api/v2/deals'
+            headers = {
+                'API-KEY': self.api_key,
+                'API-SECRET': self.api_secret
             }
-            processed_deals.append(processed_deal)
-        
-        return {'deals': processed_deals}
+            params = {
+                'page_size': page_size,
+                'page_no': 1,
+                'exclusive_deals_only': '0'
+            }
+
+            response = requests.get(url, headers=headers, params=params)
+            # Check status code before processing
+            if response.status_code != 200:
+                return response
+            
+            response.raise_for_status()
+            deals_data = response.json().get('deals', [])
+            
+            # Process the deals
+            processed_deals = []
+            for deal in deals_data:
+                retail_price = float(deal.get('retail_price', 0))
+                payout_price = float(deal.get('payout_price', 0))
+                price_difference = payout_price - retail_price
+                
+                # Get first item's URL if available
+                product_url = ''
+                items = deal.get('items', [])
+                if items and items[0].get('retailer_links'):
+                    product_url = items[0]['retailer_links'][0].get('url', '')
+
+                processed_deal = {
+                    'deal_id': deal.get('deal_id'),
+                    'title': deal.get('title'),
+                    'retail_price': retail_price,
+                    'payout_price': payout_price,
+                    'price_difference': price_difference,
+                    'product_url': product_url,
+                    'items': items,
+                    'retailers': deal.get('retailers'),
+                    'deal_code': deal.get('deal_code')
+                }
+                processed_deals.append(processed_deal)
+            
+            return {'deals': processed_deals, 'status_code': response.status_code}
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"BFMR API request failed: {e}")
+            raise
 
     def commit_to_deal(self, deal_id: str, item_id: str, item_qty: str):
         """Commit to a deal using the BFMR API"""

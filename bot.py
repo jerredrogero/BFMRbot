@@ -335,18 +335,24 @@ async def send_deal_message(update: Update, deal: dict, is_reply: bool = False, 
             await update.message.reply_text("❌ Error displaying deal. Please try again later.")
 
 async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        message = await update.message.reply_text("🔍 Fetching deals...")
-        bfmr = get_user_bfmr(str(update.effective_user.id))
+    """Show available deals"""
+    if not await check_credentials(update):
+        return
         
-        response = await bfmr.get_active_deals(page_size=50)
+    message = await update.message.reply_text("🔍 Fetching deals...")
+    bfmr = get_user_bfmr(str(update.effective_user.id))
+    
+    try:
+        response = bfmr.get_active_deals(page_size=50)
+        
         if response.status_code == 500:
-            await message.edit_text("❌ BFMR API is currently experiencing issues. Please try again later.")
+            await message.edit_text("⚠️ BFMR API is temporarily unavailable. Please try again in a few minutes.")
             logger.error(f"BFMR API 500 error: {response.text}")
             return
             
         response.raise_for_status()
-        deals = response.json().get('deals', [])
+        deals_data = response.json()
+        deals = deals_data.get('deals', [])
         
         if not deals:
             await message.edit_text("No deals available at the moment.")
@@ -357,12 +363,17 @@ async def deals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['current_deal_index'] = 0
         
         # Send first deal
-        await message.delete()  # Delete the "Fetching deals..." message
+        await message.delete()
         await send_deal_message(update, deals[0], show_navigation=True)
         
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.HTTPError as e:
         logger.error(f"Error fetching deals: {e}")
-        await message.edit_text("❌ Unable to connect to BFMR API. Please try again later.")
+        error_message = "Unable to connect to BFMR API."
+        if e.response.status_code == 401:
+            error_message = "Invalid API credentials. Please use /setup to reconfigure."
+        elif e.response.status_code == 403:
+            error_message = "Access forbidden. Please check your API permissions."
+        await message.edit_text(f"❌ {error_message}")
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         await message.edit_text("❌ An unexpected error occurred. Please try again later.")
