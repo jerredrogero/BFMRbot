@@ -8,6 +8,17 @@ from datetime import datetime
 from dotenv import load_dotenv
 from bfmr import BFMRAPI
 
+# Set up more detailed logging
+logging.basicConfig(
+    level=logging.DEBUG,  # Changed to DEBUG for more detailed logs
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('bot_debug.log'),  # Save logs to a file
+        logging.StreamHandler()  # Also show logs in console
+    ]
+)
+logger = logging.getLogger(__name__)
+
 # Load environment variables
 load_dotenv()
 
